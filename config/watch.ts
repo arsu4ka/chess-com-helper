@@ -1,23 +1,23 @@
 import Bun, { $ } from "bun";
-import { parseArgs } from "util";
-import { watch } from "fs";
-import type { FSWatcher } from "fs";
 import chalk from "chalk";
+import type { FSWatcher } from "fs";
+import { watch } from "fs";
+import { parseArgs } from "util";
 
 import "./cwd";
-import { server, channel } from "./server";
+import { channel, server } from "./server";
 
 const {
-  values: { dir },
+	values: { dir },
 } = parseArgs({
-  args: Bun.argv,
-  strict: true,
-  allowPositionals: true,
-  options: {
-    dir: {
-      type: "string",
-    },
-  },
+	args: Bun.argv,
+	strict: true,
+	allowPositionals: true,
+	options: {
+		dir: {
+			type: "string",
+		},
+	},
 });
 
 const directoriesToWatch = dir?.split(",").map((dir) => `./${dir}`) || [];
@@ -28,29 +28,29 @@ await runBuild();
 const directories = directoriesToWatch.join(", ");
 const defaultWatchMessage = `Watching ${directories} directories for changes...`;
 
-console.log(chalk.bold(defaultWatchMessage))
+console.log(chalk.bold(defaultWatchMessage));
 
 const watchers: FSWatcher[] = [];
 
 for (const directory of directoriesToWatch) {
-  const watcher = watch(directory, { recursive: true }, async (_, filename) => {
-    console.log(chalk.bold.yellow.dim(`Changes detected in ${filename}`))
-    
-    await runBuild();
-    console.log(chalk.bold.green("✔️ Updated build files"))
+	const watcher = watch(directory, { recursive: true }, async (_, filename) => {
+		console.log(chalk.bold.yellow.dim(`Changes detected in ${filename}`));
 
-    server.publish(channel, Bun.env.CHROME_EXTENSION_ID as string);
+		await runBuild();
+		console.log(chalk.bold.green("✔️ Updated build files"));
 
-    console.log(chalk.bold(defaultWatchMessage))
-  });
+		server.publish(channel, Bun.env.CHROME_EXTENSION_ID as string);
 
-  watchers.push(watcher);
+		console.log(chalk.bold(defaultWatchMessage));
+	});
+
+	watchers.push(watcher);
 }
 
 process.on("SIGINT", () => {
-  for (const watcher of watchers) {
-    watcher.close();
-  }
+	for (const watcher of watchers) {
+		watcher.close();
+	}
 
-  process.exit(0);
+	process.exit(0);
 });

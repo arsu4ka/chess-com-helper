@@ -5,7 +5,9 @@
 		"build": "bun run config/build.ts",
 		"dev": "bun run config/watch.ts --dir=src,public",
 		"pack": "bun run config/pack.ts",
-		"css": "postcss"
+		"css": "postcss",
+		"format": "biome format --write .",
+		"lint": "biome lint ."
 	},
 	"devDependencies": {
 		"@tailwindcss/postcss": "^4.1.16",

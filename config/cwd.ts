@@ -1,4 +1,4 @@
-import { $ } from 'bun';
-import { resolve } from 'node:path';
+import { resolve } from "node:path";
+import { $ } from "bun";
 
-$.cwd(resolve(__dirname, '../'));
+$.cwd(resolve(__dirname, "../"));

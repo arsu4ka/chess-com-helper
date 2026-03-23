@@ -1,16 +1,16 @@
-import Bun, { $ } from 'bun';
-import AdmZip from 'adm-zip';
-import manifest from '../public/manifest.json';
+import AdmZip from "adm-zip";
+import Bun, { $ } from "bun";
+import manifest from "../public/manifest.json";
 
-import './cwd';
+import "./cwd";
 
 await $`bun run ./config/build.ts`;
 
-const packName = manifest.name.toLowerCase().replace(/[\s\W]+/g, '-');
+const packName = manifest.name.toLowerCase().replace(/[\s\W]+/g, "-");
 
 const { version } = manifest;
 
-const folderToCompress = './build';
+const folderToCompress = "./build";
 const outputArchive = `./release/${packName}-v${version}.zip`;
 
 const zip = new AdmZip();
