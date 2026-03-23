@@ -38,7 +38,6 @@ await Bun.build({
 		...scripts,
 		service_worker,
 		"offscreen/index.ts",
-		"options/index.tsx",
 		"popup/index.tsx",
 	]),
 	outdir,
