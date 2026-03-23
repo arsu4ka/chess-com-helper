@@ -17,6 +17,12 @@ const resolveEntryPoints = (entrypoints: string[]) => {
 };
 
 const publicFolder = "./public";
+const stockfishBinFolder = "./node_modules/stockfish/bin";
+const stockfishOutFolder = `${outdir}/vendor/stockfish`;
+const stockfishAssetFiles = [
+	"stockfish-18-lite-single.js",
+	"stockfish-18-lite-single.wasm",
+];
 
 await $`rm -rf ${outdir}`;
 
@@ -31,6 +37,7 @@ await Bun.build({
 	entrypoints: resolveEntryPoints([
 		...scripts,
 		service_worker,
+		"offscreen/index.ts",
 		"options/index.tsx",
 		"popup/index.tsx",
 	]),
@@ -63,3 +70,9 @@ for await (const filename of glob.scan(publicFolder)) {
 }
 
 await $`cp -R ${publicFolder}/icons ${outdir}`;
+
+await $`mkdir -p ${stockfishOutFolder}`;
+
+for (const filename of stockfishAssetFiles) {
+	await $`cp ${stockfishBinFolder}/${filename} ${stockfishOutFolder}/${filename}`;
+}
