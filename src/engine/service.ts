@@ -1,4 +1,5 @@
-import { validateFen } from "../utils/fen";
+import type { UCIMove } from "../types/chess";
+import { validateFen } from "../utils/chess";
 import { clamp, parseInteger, toInteger } from "../utils/math";
 import { createDeferred, type Deferred, waitFor } from "../utils/promises";
 import type {
@@ -94,7 +95,7 @@ const parseInfoLine = (line: string): AnalysisMove | null => {
 	if (pv.length === 0) return null;
 
 	return {
-		uci: pv[0],
+		uci: pv[0] as UCIMove,
 		depth,
 		scoreCp,
 		mateIn,

@@ -1,3 +1,5 @@
+import type { UCIMove } from "../types/chess";
+
 export const ENGINE_MESSAGE_NAMESPACE = "stockfish-engine";
 export const ENGINE_BACKGROUND_TARGET = "background";
 export const ENGINE_OFFSCREEN_TARGET = "offscreen";
@@ -31,7 +33,7 @@ export interface AnalyzePositionInput {
 }
 
 export interface AnalysisMove {
-	uci: string;
+	uci: UCIMove;
 	depth: number;
 	scoreCp: number | null;
 	mateIn: number | null;
