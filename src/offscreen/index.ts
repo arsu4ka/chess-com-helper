@@ -1,72 +1,10 @@
 import {
-	type AnalyzePositionInput,
 	createEngineErrorResponse,
 	createEngineSuccessResponse,
 	ENGINE_MESSAGE_TYPES,
 	isOffscreenEngineRequest,
 } from "../engine/protocol";
 import { EngineServiceError, stockfishEngineService } from "../engine/service";
-import {
-	type ExtensionSettings,
-	getDefaultExtensionSettings,
-	getExtensionSettings,
-	normalizeExtensionSettings,
-	SETTINGS_STORAGE_KEY,
-} from "../settings";
-
-let currentSettings = getDefaultExtensionSettings();
-let settingsReadyPromise: Promise<void> | null = null;
-
-const loadSettingsIntoCache = async () => {
-	currentSettings = await getExtensionSettings();
-};
-
-const ensureSettingsReady = async () => {
-	if (settingsReadyPromise) {
-		await settingsReadyPromise;
-		return;
-	}
-
-	settingsReadyPromise = loadSettingsIntoCache().finally(() => {
-		settingsReadyPromise = null;
-	});
-
-	await settingsReadyPromise;
-};
-
-const buildAnalyzeInputFromSettings = (
-	input: AnalyzePositionInput,
-	settings: ExtensionSettings,
-): AnalyzePositionInput => {
-	const analyzeInput: AnalyzePositionInput = {
-		fen: input.fen,
-		multiPv: input.multiPv ?? settings.multiPv,
-	};
-
-	if (settings.analysisMode === "depth") {
-		analyzeInput.depth = input.depth ?? settings.depth;
-	} else {
-		analyzeInput.moveTimeMs = input.moveTimeMs ?? settings.moveTimeMs;
-	}
-
-	return analyzeInput;
-};
-
-chrome.storage.onChanged.addListener((changes, areaName) => {
-	if (areaName !== "sync") return;
-
-	const settingsChange = changes[SETTINGS_STORAGE_KEY];
-	if (!settingsChange) return;
-
-	currentSettings = normalizeExtensionSettings(settingsChange.newValue);
-});
-
-void ensureSettingsReady().catch((error) => {
-	console.error(
-		"Failed to preload extension settings in offscreen document.",
-		error,
-	);
-});
 
 const createErrorResponse = (error: unknown) => {
 	if (error instanceof EngineServiceError) {
@@ -107,20 +45,8 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 					return;
 				}
 				case ENGINE_MESSAGE_TYPES.ANALYZE_POSITION: {
-					await ensureSettingsReady();
-
-					if (!currentSettings.enabled) {
-						sendResponse(
-							createEngineErrorResponse(
-								"EXTENSION_DISABLED",
-								"Extension analysis is currently disabled in popup settings.",
-							),
-						);
-						return;
-					}
-
 					const result = await stockfishEngineService.analyzePosition(
-						buildAnalyzeInputFromSettings(message.payload, currentSettings),
+						message.payload,
 					);
 					sendResponse(createEngineSuccessResponse(result));
 					return;

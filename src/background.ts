@@ -1,4 +1,5 @@
 import {
+	type AnalyzePositionInput,
 	createEngineErrorResponse,
 	createEngineRequest,
 	ENGINE_MESSAGE_TYPES,
@@ -9,10 +10,80 @@ import {
 	type EngineResponsePayload,
 	isBackgroundEngineRequest,
 } from "./engine/protocol";
+import {
+	type ExtensionSettings,
+	getDefaultExtensionSettings,
+	getExtensionSettings,
+	normalizeExtensionSettings,
+	SETTINGS_STORAGE_KEY,
+} from "./settings";
 
 const OFFSCREEN_DOCUMENT_PATH = "offscreen/index.html";
 
 let creatingOffscreenDocument: Promise<void> | null = null;
+let currentSettings = getDefaultExtensionSettings();
+let settingsReadyPromise: Promise<void> | null = null;
+
+const loadSettingsIntoCache = async () => {
+	currentSettings = await getExtensionSettings();
+};
+
+const ensureSettingsReady = async () => {
+	if (settingsReadyPromise) {
+		await settingsReadyPromise;
+		return;
+	}
+
+	settingsReadyPromise = loadSettingsIntoCache().finally(() => {
+		settingsReadyPromise = null;
+	});
+
+	await settingsReadyPromise;
+};
+
+const buildAnalyzeInputFromSettings = (
+	input: AnalyzePositionInput,
+	settings: ExtensionSettings,
+): AnalyzePositionInput => {
+	const analyzeInput: AnalyzePositionInput = {
+		fen: input.fen,
+		multiPv: input.multiPv ?? settings.multiPv,
+	};
+
+	if (typeof input.moveTimeMs === "number" && input.moveTimeMs > 0) {
+		analyzeInput.moveTimeMs = input.moveTimeMs;
+		return analyzeInput;
+	}
+
+	if (typeof input.depth === "number" && input.depth > 0) {
+		analyzeInput.depth = input.depth;
+		return analyzeInput;
+	}
+
+	if (settings.analysisMode === "moveTime") {
+		analyzeInput.moveTimeMs = settings.moveTimeMs;
+	} else {
+		analyzeInput.depth = settings.depth;
+	}
+
+	return analyzeInput;
+};
+
+chrome.storage.onChanged.addListener((changes, areaName) => {
+	if (areaName !== "sync") return;
+
+	const settingsChange = changes[SETTINGS_STORAGE_KEY];
+	if (!settingsChange) return;
+
+	currentSettings = normalizeExtensionSettings(settingsChange.newValue);
+});
+
+void ensureSettingsReady().catch((error) => {
+	console.error(
+		"Failed to preload extension settings in background service worker.",
+		error,
+	);
+});
 
 const hasOffscreenDocument = async () => {
 	const offscreenUrl = chrome.runtime.getURL(OFFSCREEN_DOCUMENT_PATH);
@@ -66,10 +137,30 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 				case ENGINE_MESSAGE_TYPES.INIT:
 				case ENGINE_MESSAGE_TYPES.GET_STATUS:
 				case ENGINE_MESSAGE_TYPES.STOP_ANALYSIS:
-				case ENGINE_MESSAGE_TYPES.RESET:
-				case ENGINE_MESSAGE_TYPES.ANALYZE_POSITION: {
+				case ENGINE_MESSAGE_TYPES.RESET: {
 					sendResponse(
 						await forwardMessageToOffscreen(message.type, message.payload),
+					);
+					return;
+				}
+				case ENGINE_MESSAGE_TYPES.ANALYZE_POSITION: {
+					await ensureSettingsReady();
+
+					if (!currentSettings.enabled) {
+						sendResponse(
+							createEngineErrorResponse(
+								"EXTENSION_DISABLED",
+								"Extension analysis is currently disabled in popup settings.",
+							),
+						);
+						return;
+					}
+
+					sendResponse(
+						await forwardMessageToOffscreen(
+							message.type,
+							buildAnalyzeInputFromSettings(message.payload, currentSettings),
+						),
 					);
 					return;
 				}
