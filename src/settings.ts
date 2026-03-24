@@ -1,6 +1,6 @@
-import { storage } from "./utils";
 import { clamp, toInteger } from "./utils/math";
 import { isRecord } from "./utils/object";
+import { storage } from "./utils/storage";
 
 export type AnalysisMode = "depth" | "moveTime";
 

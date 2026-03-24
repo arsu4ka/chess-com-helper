@@ -1,7 +1,6 @@
-import { waitFor } from "../utils";
 import { validateFen } from "../utils/fen";
 import { clamp, parseInteger, toInteger } from "../utils/math";
-import { createDeferred, type Deferred } from "../utils/promises";
+import { createDeferred, type Deferred, waitFor } from "../utils/promises";
 import type {
 	AnalysisMove,
 	AnalysisResult,
