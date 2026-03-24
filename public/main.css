@@ -23,8 +23,16 @@ body {
 	min-height: 580px;
 	margin: 0;
 	background:
-		radial-gradient(circle at top left, rgba(250, 204, 21, 0.34), transparent 34%),
-		radial-gradient(circle at top right, rgba(251, 146, 60, 0.26), transparent 30%),
+		radial-gradient(
+			circle at top left,
+			rgba(250, 204, 21, 0.34),
+			transparent 34%
+		),
+		radial-gradient(
+			circle at top right,
+			rgba(251, 146, 60, 0.26),
+			transparent 30%
+		),
 		linear-gradient(180deg, #fdf8ed 0%, #f4efe3 54%, #ece5d6 100%);
 	font-family: var(--font-body);
 }
