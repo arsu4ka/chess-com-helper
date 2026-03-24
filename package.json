@@ -2,9 +2,9 @@
 	"name": "bun-chrome-extension",
 	"module": "index.ts",
 	"scripts": {
-		"build": "bun run config/build.ts",
-		"dev": "bun run config/watch.ts --dir=src,public",
-		"pack": "bun run config/pack.ts",
+		"build": "bun run scripts/build.ts",
+		"dev": "bun run scripts/watch.ts --dir=src,public",
+		"pack": "bun run scripts/pack.ts",
 		"css": "postcss",
 		"format": "biome format --write .",
 		"lint": "biome lint ."
