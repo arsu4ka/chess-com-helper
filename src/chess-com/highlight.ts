@@ -11,34 +11,36 @@ export function clearHighlights(board: Element): void {
 	board
 		.querySelectorAll(`.${HIGHLIGHT_CLASS}`)
 		.forEach((el) => void el.remove());
+
+	// resetPieceOpacity(board);
 }
 
 /**
  * Reset piece opacity to default
  */
-export function resetPieceOpacity(board: Element): void {
-	const allPieces = board.querySelectorAll(".piece");
-	allPieces.forEach((piece) => {
-		if (piece instanceof HTMLElement) {
-			piece.style.opacity = "1";
-		}
-	});
-}
+// export function resetPieceOpacity(board: Element): void {
+// 	const allPieces = board.querySelectorAll(".piece");
+// 	allPieces.forEach((piece) => {
+// 		if (piece instanceof HTMLElement) {
+// 			piece.style.opacity = "1";
+// 		}
+// 	});
+// }
 
 /**
  * Dim all pieces except highlighted ones
  */
-export function dimPieces(board: Element, excludeSquares: string[]): void {
-	const allPieces = board.querySelectorAll(".piece");
-	allPieces.forEach((piece) => {
-		if (piece instanceof HTMLElement) {
-			const isExcluded = excludeSquares.some((square) =>
-				piece.classList.contains(`square-${square}`),
-			);
-			piece.style.opacity = isExcluded ? "1" : "0.8";
-		}
-	});
-}
+// export function dimPieces(board: Element, excludeSquares: string[]): void {
+// 	const allPieces = board.querySelectorAll(".piece");
+// 	allPieces.forEach((piece) => {
+// 		if (piece instanceof HTMLElement) {
+// 			const isExcluded = excludeSquares.some((square) =>
+// 				piece.classList.contains(`square-${square}`),
+// 			);
+// 			piece.style.opacity = isExcluded ? "1" : "0.8";
+// 		}
+// 	});
+// }
 
 /**
  * Display move suggestion highlight on the board
@@ -46,15 +48,15 @@ export function dimPieces(board: Element, excludeSquares: string[]): void {
 export function displayMoveHighlight(
 	move: UCIMove,
 	board: Element,
-	show: boolean = true,
+	// show: boolean = true,
 ): void {
 	// Clear existing highlights
 	clearHighlights(board);
 
-	if (!show) {
-		resetPieceOpacity(board);
-		return;
-	}
+	// if (!show) {
+	// 	resetPieceOpacity(board);
+	// 	return;
+	// }
 
 	// Add pulse animation
 	addKeyframesAnimation(
@@ -76,7 +78,7 @@ export function displayMoveHighlight(
 	const endSquare = `${endFile}${endRank}`;
 
 	// Dim non-highlighted pieces
-	dimPieces(board, [startSquare, endSquare]);
+	// dimPieces(board, [startSquare, endSquare]);
 
 	// Create highlights
 	[startSquare, endSquare].forEach((squareCoord) => {

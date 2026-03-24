@@ -189,7 +189,13 @@ export class StockfishEngineService {
 		try {
 			const wasmUrl = chrome.runtime.getURL(ENGINE_WASM_PATH);
 			const scriptUrl = chrome.runtime.getURL(ENGINE_SCRIPT_PATH);
-			const workerUrl = `${scriptUrl}#${encodeURIComponent(wasmUrl)},worker`;
+			const workerUrl = `${scriptUrl}#${encodeURIComponent(wasmUrl)}`;
+
+			console.debug("Starting Stockfish worker", {
+				scriptUrl,
+				wasmUrl,
+				workerUrl,
+			});
 
 			this.worker = new Worker(workerUrl);
 			this.worker.addEventListener("message", this.handleWorkerMessage);
@@ -293,6 +299,8 @@ export class StockfishEngineService {
 
 		if (!line) return;
 
+		console.debug("Stockfish worker message", line);
+
 		if (line === "uciok") {
 			this.uciReady?.resolve();
 			this.uciReady = null;
@@ -325,7 +333,15 @@ export class StockfishEngineService {
 		this.currentAnalysis.movesByIndex.set(moveIndex, parsedMove);
 	};
 
-	private handleWorkerError = () => {
+	private handleWorkerError = (event: ErrorEvent) => {
+		console.error("Stockfish worker error", {
+			message: event.message,
+			filename: event.filename,
+			lineno: event.lineno,
+			colno: event.colno,
+			error: event.error,
+		});
+
 		this.status = "error";
 		this.uciReady?.reject(
 			new EngineServiceError(

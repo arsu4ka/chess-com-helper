@@ -19,7 +19,7 @@ export class ChessComBoard {
 	private lastFEN: string | null = null;
 
 	public getBoard(): ChessBoardElement | null {
-		if (this.boardElement) {
+		if (this.boardElement?.isConnected) {
 			return this.boardElement;
 		}
 
@@ -38,12 +38,13 @@ export class ChessComBoard {
 		const board = this.getBoard();
 		if (!board) return null;
 
-		let fen = "";
-		const ranks = Object.values(FILE_TO_NUMBER) as ChessRank[];
+		const fenRanks: string[] = [];
+		const ranks = [8, 7, 6, 5, 4, 3, 2, 1] as ChessRank[];
 		const files = Object.keys(FILE_TO_NUMBER) as ChessFile[];
 
 		for (const rank of ranks) {
 			let emptySquareCount = 0;
+			let rankFEN = "";
 
 			for (const file of files) {
 				const square: Square = `${file}${rank}`;
@@ -51,26 +52,24 @@ export class ChessComBoard {
 
 				if (pieceSymbol) {
 					if (emptySquareCount > 0) {
-						fen += emptySquareCount;
+						rankFEN += emptySquareCount;
 						emptySquareCount = 0;
 					}
 
-					fen += pieceSymbol;
+					rankFEN += pieceSymbol;
 				} else {
 					emptySquareCount++;
 				}
 			}
 
 			if (emptySquareCount > 0) {
-				fen += emptySquareCount;
+				rankFEN += emptySquareCount;
 			}
 
-			if (rank > 1) {
-				fen += "/";
-			}
+			fenRanks.push(rankFEN);
 		}
 
-		return fen;
+		return fenRanks.join("/");
 	}
 
 	public getTurnMarker(): PlayerColor | null {
@@ -94,7 +93,7 @@ export class ChessComBoard {
 
 		if (!fen) return null;
 
-		return `${fen} ${turnMarker || "w"}`;
+		return `${fen} ${turnMarker || "w"} - - 0 1`;
 	}
 
 	/**
