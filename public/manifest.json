@@ -19,8 +19,9 @@
 	"permissions": ["offscreen", "storage"],
 	"content_scripts": [
 		{
-			"matches": ["<all_urls>"],
-			"js": ["contentScript.js"]
+			"js": ["contentScript.js"],
+			"matches": ["https://www.chess.com/*", "https://chess.com/*"],
+			"run_at": "document_idle"
 		}
 	]
 }

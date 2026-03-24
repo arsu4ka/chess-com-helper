@@ -14,9 +14,9 @@ type ChessBoardElement = HTMLElement & {
 /**
  * Board Service - Manages interaction with chess.com board
  */
-export class BoardService {
+export class ChessComBoard {
 	private boardElement: ChessBoardElement | null = null;
-	private lastFEN: string = "";
+	private lastFEN: string | null = null;
 
 	public getBoard(): ChessBoardElement | null {
 		if (this.boardElement) {
@@ -34,8 +34,9 @@ export class BoardService {
 	/**
 	 * Generate FEN string from current board position
 	 */
-	private generateFEN(): string {
-		if (!this.boardElement) return "";
+	private generateFEN(): string | null {
+		const board = this.getBoard();
+		if (!board) return null;
 
 		let fen = "";
 		const ranks = Object.values(FILE_TO_NUMBER) as ChessRank[];
@@ -87,8 +88,13 @@ export class BoardService {
 		return isWhiteMove ? "b" : "w";
 	}
 
-	public generateFullFEN(): string {
-		return `${this.generateFEN()} ${this.getTurnMarker() || "w"}`;
+	public generateFullFEN(): string | null {
+		const fen = this.generateFEN();
+		const turnMarker = this.getTurnMarker();
+
+		if (!fen) return null;
+
+		return `${fen} ${turnMarker || "w"}`;
 	}
 
 	/**
@@ -120,15 +126,17 @@ export class BoardService {
 	}
 
 	private getPieceElement(square: Square): Element | null {
-		if (!this.boardElement) return null;
+		const board = this.getBoard();
+		if (!board) return null;
 
 		const fileNum = FILE_TO_NUMBER[square[0] as keyof typeof FILE_TO_NUMBER];
 		const squareSelector = `.piece.square-${fileNum}${square[1]}`;
-		return this.boardElement.querySelector(squareSelector);
+		return board.querySelector(squareSelector);
 	}
 
 	private getLastMove(): { from: Square; to: Square } | null {
-		if (!this.boardElement) return null;
+		const board = this.getBoard();
+		if (!board) return null;
 
 		// TODO: Implement actual logic to determine last move based on board state
 		return {
@@ -139,4 +147,4 @@ export class BoardService {
 }
 
 /** Singleton instance */
-export const boardService = new BoardService();
+export const boardService = new ChessComBoard();
