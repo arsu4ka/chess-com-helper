@@ -91,10 +91,11 @@ export class ChessComBoard {
 	public generateFullFEN(): string | null {
 		const fen = this.generateFEN();
 		const turnMarker = this.getTurnMarker();
+		const castlingRights = this.getCastlingRights();
 
 		if (!fen) return null;
 
-		return `${fen} ${turnMarker || "w"} QKqk - 0 1`;
+		return `${fen} ${turnMarker || "w"} ${castlingRights} - 0 1`;
 	}
 
 	/**
@@ -134,6 +135,32 @@ export class ChessComBoard {
 		return board.querySelector(squareSelector);
 	}
 
+	private getCastlingRights(): string {
+		let castlingRights = "";
+
+		if (this.getPieceSymbol("e1") === "K") {
+			if (this.getPieceSymbol("h1") === "R") {
+				castlingRights += "K";
+			}
+
+			if (this.getPieceSymbol("a1") === "R") {
+				castlingRights += "Q";
+			}
+		}
+
+		if (this.getPieceSymbol("e8") === "k") {
+			if (this.getPieceSymbol("h8") === "r") {
+				castlingRights += "k";
+			}
+
+			if (this.getPieceSymbol("a8") === "r") {
+				castlingRights += "q";
+			}
+		}
+
+		return castlingRights || "-";
+	}
+
 	private parseHighlightedSquare(element: Element): Square | null {
 		const squareClass = Array.from(element.classList).find((cssClass) =>
 			/^square-[1-8][1-8]$/.test(cssClass),
@@ -158,27 +185,16 @@ export class ChessComBoard {
 			.filter((element) => !element.classList.contains("suggestion-highlight"))
 			.map((element) => this.parseHighlightedSquare(element))
 			.filter((square): square is Square => square !== null);
-		console.debug(
-			"Highlighted squares detected for last move:",
-			highlightedSquares,
-		);
 
 		if (highlightedSquares.length !== 2) return null;
 
 		const [firstSquare, secondSquare] = highlightedSquares;
 		const firstPiece = this.getPieceSymbol(firstSquare);
 		const secondPiece = this.getPieceSymbol(secondSquare);
-		console.debug("Pieces on highlighted squares:", {
-			[firstSquare]: firstPiece,
-			[secondSquare]: secondPiece,
-		});
 
-		const move =
-			!firstPiece && secondPiece
-				? { from: firstSquare, to: secondSquare }
-				: { from: secondSquare, to: firstSquare };
-		console.debug("Inferred last move:", move);
-		return move;
+		return !firstPiece && secondPiece
+			? { from: firstSquare, to: secondSquare }
+			: { from: secondSquare, to: firstSquare };
 	}
 }
 
