@@ -1,8 +1,11 @@
 import type { UCIMove } from "../types/chess";
-import { fileToCoord } from "../utils/chess";
-import { addKeyframesAnimation, createElement } from "../utils/dom";
+import { fileToCoord, parseUCIMove } from "../utils/chess";
+import { createElement } from "../utils/dom";
 
 const HIGHLIGHT_CLASS = "suggestion-highlight";
+const HIGHLIGHT_COLOR = "231, 76, 60";
+const MAX_HIGHLIGHT_OPACITY = 1;
+const MIN_HIGHLIGHT_OPACITY = 0.2;
 
 /**
  * Clear all existing highlights from the board
@@ -42,64 +45,61 @@ export function clearHighlights(board: Element): void {
 // 	});
 // }
 
+const getMoveHighlightOpacity = (index: number, totalMoves: number): number => {
+	if (totalMoves <= 1) {
+		return MAX_HIGHLIGHT_OPACITY;
+	}
+
+	const opacityRange = MAX_HIGHLIGHT_OPACITY - MIN_HIGHLIGHT_OPACITY;
+	return MAX_HIGHLIGHT_OPACITY - (opacityRange * index) / (totalMoves - 1);
+};
+
+const createSquareHighlight = (squareCoord: string, opacity: number) => {
+	return createElement(
+		"div",
+		{
+			border: `4px solid rgba(${HIGHLIGHT_COLOR}, ${opacity})`,
+			boxSizing: "border-box",
+			pointerEvents: "none",
+			borderRadius: "4px",
+			boxShadow: `0 0 18px rgba(${HIGHLIGHT_COLOR}, ${opacity})`,
+			background: `rgba(${HIGHLIGHT_COLOR}, ${Math.min(opacity * 0.18, 0.16)})`,
+			position: "absolute",
+			zIndex: "1000",
+		},
+		{
+			class: `highlight ${HIGHLIGHT_CLASS} square-${squareCoord}`,
+		},
+	);
+};
+
+const moveToBoardSquares = (move: UCIMove): [string, string] => {
+	const { from, to } = parseUCIMove(move);
+	const startSquare = `${fileToCoord(from[0])}${from[1]}`;
+	const endSquare = `${fileToCoord(to[0])}${to[1]}`;
+	return [startSquare, endSquare];
+};
+
+export function displayMoveHighlights(moves: UCIMove[], board: Element): void {
+	clearHighlights(board);
+
+	const uniqueMoves = moves.filter(
+		(move, index) => moves.indexOf(move) === index,
+	);
+	const totalMoves = uniqueMoves.length;
+
+	uniqueMoves.forEach((move, index) => {
+		const opacity = getMoveHighlightOpacity(index, totalMoves);
+
+		moveToBoardSquares(move).forEach((squareCoord) => {
+			board.appendChild(createSquareHighlight(squareCoord, opacity));
+		});
+	});
+}
+
 /**
  * Display move suggestion highlight on the board
  */
-export function displayMoveHighlight(
-	move: UCIMove,
-	board: Element,
-	// show: boolean = true,
-): void {
-	// Clear existing highlights
-	clearHighlights(board);
-
-	// if (!show) {
-	// 	resetPieceOpacity(board);
-	// 	return;
-	// }
-
-	// Add pulse animation
-	addKeyframesAnimation(
-		"pulse",
-		`
-    0% { box-shadow: 0 0 20px rgba(231, 76, 60, 0.8); }
-    50% { box-shadow: 0 0 30px rgba(231, 76, 60, 0.6); }
-    100% { box-shadow: 0 0 20px rgba(231, 76, 60, 0.8); }
-  `,
-	);
-
-	// Parse move
-	const startFile = fileToCoord(move[0]);
-	const startRank = move[1];
-	const endFile = fileToCoord(move[2]);
-	const endRank = move[3];
-
-	const startSquare = `${startFile}${startRank}`;
-	const endSquare = `${endFile}${endRank}`;
-
-	// Dim non-highlighted pieces
-	// dimPieces(board, [startSquare, endSquare]);
-
-	// Create highlights
-	[startSquare, endSquare].forEach((squareCoord) => {
-		const highlight = createElement(
-			"div",
-			{
-				border: "4px solid #e74c3c",
-				boxSizing: "border-box",
-				pointerEvents: "none",
-				borderRadius: "4px",
-				boxShadow: "0 0 20px rgba(231, 76, 60, 0.8)",
-				background: "transparent",
-				position: "absolute",
-				zIndex: "1000",
-				animation: "pulse 2s infinite",
-			},
-			{
-				class: `highlight ${HIGHLIGHT_CLASS} square-${squareCoord}`,
-			},
-		);
-
-		board.appendChild(highlight);
-	});
+export function displayMoveHighlight(move: UCIMove, board: Element): void {
+	displayMoveHighlights([move], board);
 }

@@ -1,5 +1,5 @@
 import { boardService } from "./chess-com/board";
-import { clearHighlights, displayMoveHighlight } from "./chess-com/highlight";
+import { clearHighlights, displayMoveHighlights } from "./chess-com/highlight";
 import { analyzePosition, stopStockfishAnalysis } from "./engine/client";
 import { EngineClientError } from "./engine/protocol";
 import {
@@ -7,7 +7,6 @@ import {
 	normalizeExtensionSettings,
 	SETTINGS_STORAGE_KEY,
 } from "./settings";
-import type { UCIMove } from "./types/chess";
 import { waitForElement } from "./utils/dom";
 
 const BOARD_SELECTOR = "wc-chess-board";
@@ -71,8 +70,11 @@ const processBoardChange = async () => {
 		const currentBoard = boardService.getBoard();
 		if (!currentBoard) return;
 
-		if (analysis.bestMove) {
-			displayMoveHighlight(analysis.bestMove.uci as UCIMove, currentBoard);
+		if (analysis.moves.length > 0) {
+			displayMoveHighlights(
+				analysis.moves.map((move) => move.uci),
+				currentBoard,
+			);
 		}
 
 		console.log("Stockfish analysis:", analysis);
