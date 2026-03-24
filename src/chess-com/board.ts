@@ -5,6 +5,7 @@ import {
 	type PlayerColor,
 	type Square,
 } from "../types/chess";
+import { coordToFile } from "../utils/chess";
 
 /** Chess.com board element type */
 type ChessBoardElement = HTMLElement & {
@@ -93,7 +94,7 @@ export class ChessComBoard {
 
 		if (!fen) return null;
 
-		return `${fen} ${turnMarker || "w"} - - 0 1`;
+		return `${fen} ${turnMarker || "w"} QKqk - 0 1`;
 	}
 
 	/**
@@ -133,15 +134,51 @@ export class ChessComBoard {
 		return board.querySelector(squareSelector);
 	}
 
+	private parseHighlightedSquare(element: Element): Square | null {
+		const squareClass = Array.from(element.classList).find((cssClass) =>
+			/^square-[1-8][1-8]$/.test(cssClass),
+		);
+		if (!squareClass) return null;
+
+		const match = /^square-([1-8])([1-8])$/.exec(squareClass);
+		if (!match) return null;
+
+		const file = coordToFile(Number.parseInt(match[1], 10));
+		const rank = Number.parseInt(match[2], 10) as ChessRank;
+		if (!file) return null;
+
+		return `${file}${rank}`;
+	}
+
 	private getLastMove(): { from: Square; to: Square } | null {
 		const board = this.getBoard();
 		if (!board) return null;
 
-		// TODO: Implement actual logic to determine last move based on board state
-		return {
-			from: "e2",
-			to: "e4",
-		};
+		const highlightedSquares = Array.from(board.querySelectorAll(".highlight"))
+			.filter((element) => !element.classList.contains("suggestion-highlight"))
+			.map((element) => this.parseHighlightedSquare(element))
+			.filter((square): square is Square => square !== null);
+		console.debug(
+			"Highlighted squares detected for last move:",
+			highlightedSquares,
+		);
+
+		if (highlightedSquares.length !== 2) return null;
+
+		const [firstSquare, secondSquare] = highlightedSquares;
+		const firstPiece = this.getPieceSymbol(firstSquare);
+		const secondPiece = this.getPieceSymbol(secondSquare);
+		console.debug("Pieces on highlighted squares:", {
+			[firstSquare]: firstPiece,
+			[secondSquare]: secondPiece,
+		});
+
+		const move =
+			!firstPiece && secondPiece
+				? { from: firstSquare, to: secondSquare }
+				: { from: secondSquare, to: firstSquare };
+		console.debug("Inferred last move:", move);
+		return move;
 	}
 }
 
