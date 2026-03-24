@@ -13,87 +13,100 @@ import {
 
 const SAVE_DEBOUNCE_MS = 220;
 const SAVED_BADGE_DURATION_MS = 1400;
+const POPUP_LOGO_URL = chrome.runtime.getURL("icons/icon.png");
 
 type SaveState = "idle" | "saving" | "saved" | "error";
 
 const engineStatusMeta: Record<
 	EngineStatus,
-	{ label: string; tone: string; description: string }
+	{ emoji: string; label: string; tone: string }
 > = {
 	idle: {
+		emoji: "💤",
 		label: "Idle",
 		tone: "bg-slate-900/8 text-slate-600",
-		description: "The engine is sleeping until analysis is requested.",
 	},
 	loading: {
+		emoji: "🧩",
 		label: "Loading",
-		tone: "bg-amber-200/70 text-amber-900",
-		description: "Stockfish is warming up in the hidden document.",
+		tone: "bg-amber-200/80 text-amber-950",
 	},
 	ready: {
+		emoji: "✅",
 		label: "Ready",
-		tone: "bg-emerald-200/70 text-emerald-900",
-		description: "Everything is prepared for the next board position.",
+		tone: "bg-emerald-200/80 text-emerald-950",
 	},
 	analyzing: {
+		emoji: "🧠",
 		label: "Analyzing",
-		tone: "bg-sky-200/80 text-sky-900",
-		description: "The engine is actively calculating lines right now.",
+		tone: "bg-sky-200/80 text-sky-950",
 	},
 	error: {
+		emoji: "⚠️",
 		label: "Error",
-		tone: "bg-rose-200/80 text-rose-900",
-		description: "The engine needs to be restarted before it can analyze.",
+		tone: "bg-rose-200/85 text-rose-950",
 	},
 };
 
-const saveStateMeta: Record<SaveState, { label: string; tone: string }> = {
+const saveStateMeta: Record<
+	SaveState,
+	{ emoji: string; label: string; tone: string }
+> = {
 	idle: {
-		label: "Auto save",
-		tone: "bg-white/65 text-slate-600",
+		emoji: "☁️",
+		label: "Auto",
+		tone: "bg-white/75 text-slate-500",
 	},
 	saving: {
-		label: "Saving...",
-		tone: "bg-amber-200/70 text-amber-950",
+		emoji: "💾",
+		label: "Saving",
+		tone: "bg-amber-200/80 text-amber-950",
 	},
 	saved: {
+		emoji: "✨",
 		label: "Saved",
-		tone: "bg-emerald-200/75 text-emerald-950",
+		tone: "bg-emerald-200/80 text-emerald-950",
 	},
 	error: {
-		label: "Save failed",
-		tone: "bg-rose-200/80 text-rose-950",
+		emoji: "⚠️",
+		label: "Failed",
+		tone: "bg-rose-200/85 text-rose-950",
 	},
 };
 
-const formatMoveTime = (moveTimeMs: number) => {
-	return `${(moveTimeMs / 1000).toFixed(1)}s`;
-};
+const formatMoveTime = (moveTimeMs: number) =>
+	`${(moveTimeMs / 1000).toFixed(1)}s`;
 
 const getProfileSummary = (settings: ExtensionSettings) => {
-	const profileValue =
+	const modeValue =
 		settings.analysisMode === "depth"
-			? `Depth ${settings.depth}`
-			: `Move time ${formatMoveTime(settings.moveTimeMs)}`;
+			? `D${settings.depth}`
+			: formatMoveTime(settings.moveTimeMs);
 
-	return `${profileValue} • Top ${settings.multiPv} line${
-		settings.multiPv > 1 ? "s" : ""
-	}`;
+	return `${modeValue} • ${settings.multiPv} line${settings.multiPv > 1 ? "s" : ""}`;
 };
 
 const PopupSkeleton = () => {
 	return (
-		<div className="animate-pulse px-5 py-5">
-			<div className="rounded-[30px] border border-white/55 bg-white/72 p-6 shadow-[0_18px_38px_rgba(15,23,42,0.08)]">
-				<div className="h-3 w-24 rounded-full bg-slate-200/80" />
-				<div className="mt-4 h-9 w-40 rounded-full bg-slate-200/80" />
-				<div className="mt-4 h-4 w-full rounded-full bg-slate-200/70" />
-				<div className="mt-2 h-4 w-3/4 rounded-full bg-slate-200/70" />
-			</div>
-			<div className="mt-4 space-y-4">
-				<div className="h-32 rounded-[28px] bg-white/72" />
-				<div className="h-28 rounded-[28px] bg-white/72" />
-				<div className="h-36 rounded-[28px] bg-white/72" />
+		<div className="px-4 py-4">
+			<div className="animate-pulse rounded-[30px] border border-white/60 bg-white/74 p-4 shadow-[0_18px_36px_rgba(15,23,42,0.08)]">
+				<div className="flex items-center justify-between">
+					<div>
+						<div className="h-6 w-28 rounded-full bg-slate-200/80" />
+						<div className="mt-2 h-3 w-20 rounded-full bg-slate-200/70" />
+					</div>
+					<div className="h-12 w-22 rounded-full bg-slate-200/80" />
+				</div>
+				<div className="mt-4 flex gap-2">
+					<div className="h-7 w-24 rounded-full bg-slate-200/70" />
+					<div className="h-7 w-24 rounded-full bg-slate-200/70" />
+					<div className="h-7 w-20 rounded-full bg-slate-200/70" />
+				</div>
+				<div className="mt-4 h-14 rounded-3xl bg-slate-200/60" />
+				<div className="mt-3 grid grid-cols-2 gap-3">
+					<div className="h-34 rounded-3xl bg-slate-200/60" />
+					<div className="h-34 rounded-3xl bg-slate-200/60" />
+				</div>
 			</div>
 		</div>
 	);
@@ -101,73 +114,61 @@ const PopupSkeleton = () => {
 
 interface ModeButtonProps {
 	label: string;
-	description: string;
+	emoji: string;
 	isSelected: boolean;
 	onClick: () => void;
 }
 
-const ModeButton = ({
-	label,
-	description,
-	isSelected,
-	onClick,
-}: ModeButtonProps) => {
+const ModeButton = ({ label, emoji, isSelected, onClick }: ModeButtonProps) => {
 	return (
 		<button
 			type="button"
 			onClick={onClick}
-			className={`rounded-[22px] border px-4 py-3 text-left transition ${
+			className={`flex items-center justify-center gap-2 rounded-full px-3 py-2 text-sm font-semibold transition ${
 				isSelected
-					? "border-amber-300/90 bg-white text-slate-950 shadow-[0_12px_24px_rgba(202,138,4,0.12)]"
-					: "border-transparent bg-white/40 text-slate-600 hover:border-white/70 hover:bg-white/70"
+					? "bg-slate-950 text-white shadow-[0_12px_20px_rgba(15,23,42,0.16)]"
+					: "bg-white/70 text-slate-600 hover:bg-white"
 			}`}
 		>
-			<p className="text-sm font-semibold">{label}</p>
-			<p className="mt-1 text-xs leading-5 opacity-80">{description}</p>
+			<span>{emoji}</span>
+			<span>{label}</span>
 		</button>
 	);
 };
 
-interface SliderCardProps {
-	eyebrow: string;
-	title: string;
-	description: string;
+interface SliderPanelProps {
+	emoji: string;
+	label: string;
 	valueLabel: string;
 	min: number;
 	max: number;
 	step: number;
 	value: number;
 	onChange: (value: number) => void;
-	footerLabel: string;
 }
 
-const SliderCard = ({
-	eyebrow,
-	title,
-	description,
+const SliderPanel = ({
+	emoji,
+	label,
 	valueLabel,
 	min,
 	max,
 	step,
 	value,
 	onChange,
-	footerLabel,
-}: SliderCardProps) => {
+}: SliderPanelProps) => {
 	return (
-		<section className="rounded-[28px] border border-[rgba(15,23,42,0.08)] bg-white/80 p-5 shadow-[0_18px_34px_rgba(15,23,42,0.08)] backdrop-blur-md">
-			<div className="flex items-start justify-between gap-4">
-				<div>
-					<p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-400">
-						{eyebrow}
-					</p>
-					<h3 className="mt-3 text-xl font-semibold text-slate-950">{title}</h3>
-					<p className="mt-2 text-sm leading-6 text-slate-600">{description}</p>
+		<section className="rounded-3xl border border-[rgba(15,23,42,0.08)] bg-white/82 p-4 shadow-[0_16px_30px_rgba(15,23,42,0.08)] backdrop-blur-md">
+			<div className="flex items-center justify-between gap-3">
+				<div className="flex items-center gap-2">
+					<span className="text-base">{emoji}</span>
+					<p className="text-sm font-semibold text-slate-800">{label}</p>
 				</div>
-				<div className="rounded-full bg-slate-950 px-3 py-2 text-sm font-semibold text-white shadow-[0_10px_18px_rgba(15,23,42,0.18)]">
+				<div className="rounded-full bg-slate-950 px-2.5 py-1 text-xs font-semibold text-white">
 					{valueLabel}
 				</div>
 			</div>
-			<div className="mt-6">
+			<div className="mt-4">
 				<input
 					className="control-slider"
 					type="range"
@@ -179,13 +180,29 @@ const SliderCard = ({
 						onChange(Number.parseInt(event.target.value, 10));
 					}}
 				/>
-				<div className="mt-3 flex items-center justify-between text-[11px] uppercase tracking-[0.24em] text-slate-400">
+				<div className="mt-2 flex items-center justify-between text-[10px] font-medium uppercase tracking-[0.22em] text-slate-400">
 					<span>{min}</span>
-					<span>{footerLabel}</span>
 					<span>{max}</span>
 				</div>
 			</div>
 		</section>
+	);
+};
+
+interface StatusChipProps {
+	emoji: string;
+	label: string;
+	tone: string;
+}
+
+const StatusChip = ({ emoji, label, tone }: StatusChipProps) => {
+	return (
+		<div
+			className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.2em] ${tone}`}
+		>
+			<span>{emoji}</span>
+			<span>{label}</span>
+		</div>
 	);
 };
 
@@ -226,9 +243,7 @@ export function App() {
 				startTransition(() => {
 					setSettings(getDefaultExtensionSettings());
 					setEngineStatus("error");
-					setErrorMessage(
-						"Couldn't load your saved preferences, defaults are shown instead.",
-					);
+					setErrorMessage("Could not load saved settings.");
 					setIsLoading(false);
 				});
 			}
@@ -277,7 +292,7 @@ export function App() {
 					}, SAVED_BADGE_DURATION_MS);
 				} catch (_error) {
 					setSaveState("error");
-					setErrorMessage("Couldn't save changes to Chrome storage.");
+					setErrorMessage("Could not save changes.");
 				}
 			})();
 		}, SAVE_DEBOUNCE_MS);
@@ -304,104 +319,101 @@ export function App() {
 	}
 
 	return (
-		<div className="min-h-145 px-5 py-5 text-slate-950">
-			<header className="relative overflow-hidden rounded-4xl border border-white/60 bg-[linear-gradient(180deg,rgba(255,255,255,0.92),rgba(255,250,240,0.72))] p-6 shadow-[0_20px_42px_rgba(15,23,42,0.09)] backdrop-blur-xl">
-				<div className="absolute inset-x-0 top-0 h-28 bg-[radial-gradient(circle_at_top_left,rgba(250,204,21,0.36),transparent_58%)]" />
-				<div className="relative flex items-start justify-between gap-4">
+		<div className="px-4 py-4 text-slate-950">
+			<div className="overflow-hidden rounded-[30px] border border-white/65 bg-[linear-gradient(180deg,rgba(255,255,255,0.92),rgba(255,248,239,0.8))] p-4 shadow-[0_20px_42px_rgba(15,23,42,0.1)] backdrop-blur-xl">
+				<header className="flex items-start justify-between gap-3">
 					<div>
-						<p className="text-[11px] font-semibold uppercase tracking-[0.32em] text-slate-400">
-							Chess.com Helper
-						</p>
-						<h1 className="mt-4 font-(family-name:--font-display) text-[30px] font-semibold leading-none tracking-[-0.04em] text-slate-950">
-							Live analysis
-						</h1>
-						<p className="mt-4 max-w-60 text-sm leading-6 text-slate-600">
-							Tune the engine once and keep real-time suggestions tight, fast,
-							and readable.
-						</p>
-					</div>
-					<div
-						className={`rounded-full px-3 py-2 text-xs font-semibold uppercase tracking-[0.24em] ${settings.enabled ? "bg-emerald-200/75 text-emerald-950" : "bg-slate-900/8 text-slate-600"}`}
-					>
-						{settings.enabled ? "Active" : "Disabled"}
-					</div>
-				</div>
-				<div className="relative mt-6 flex items-center justify-between gap-3">
-					<div className="rounded-full bg-white/72 px-3 py-2 text-xs uppercase tracking-[0.24em] text-slate-500 shadow-[0_10px_22px_rgba(15,23,42,0.06)]">
-						{getProfileSummary(settings)}
-					</div>
-					<div
-						className={`rounded-full px-3 py-2 text-xs font-semibold uppercase tracking-[0.24em] ${currentSaveMeta.tone}`}
-					>
-						{currentSaveMeta.label}
-					</div>
-				</div>
-			</header>
-
-			{errorMessage ? (
-				<div className="mt-4 rounded-3xl border border-rose-200/80 bg-rose-50/90 px-4 py-3 text-sm leading-6 text-rose-900 shadow-[0_14px_26px_rgba(190,24,93,0.08)]">
-					{errorMessage}
-				</div>
-			) : null}
-
-			<div className="mt-4 grid gap-4">
-				<section className="rounded-[28px] border border-[rgba(15,23,42,0.08)] bg-white/82 p-5 shadow-[0_18px_34px_rgba(15,23,42,0.08)] backdrop-blur-md">
-					<div className="flex items-center justify-between gap-4">
-						<div>
-							<p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-400">
-								Master switch
-							</p>
-							<h2 className="mt-3 text-xl font-semibold text-slate-950">
-								{settings.enabled
-									? "Analysis is running"
-									: "Analysis is paused"}
-							</h2>
-							<p className="mt-2 text-sm leading-6 text-slate-600">
-								Turn the extension on or off without losing your current
-								profile.
-							</p>
+						<div className="flex items-center gap-2">
+							<div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-2xl bg-white shadow-[0_12px_18px_rgba(15,23,42,0.16)] ring-1 ring-slate-900/8">
+								<img
+									src={POPUP_LOGO_URL}
+									alt="Chess.com Helper logo"
+									className="h-full w-full object-cover"
+								/>
+							</div>
+							<div>
+								<h1 className="font-(family-name:--font-display) text-[24px] font-semibold leading-none tracking-[-0.05em] text-slate-950">
+									<span className="text-emerald-700">Chess.com</span> Helper
+								</h1>
+								<a
+									href="https://t.me/arsu4ka"
+									target="_blank"
+									rel="noreferrer"
+									className="mt-1 inline-flex text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500 transition hover:text-slate-950"
+								>
+									BY @arsu4ka
+								</a>
+							</div>
 						</div>
-						<button
-							type="button"
-							role="switch"
-							aria-checked={settings.enabled}
-							onClick={() => {
-								setSettings((currentSettings) => ({
-									...currentSettings,
-									enabled: !currentSettings.enabled,
-								}));
-							}}
-							className={`relative h-14 w-24 rounded-full border transition ${
-								settings.enabled
-									? "border-emerald-300/70 bg-emerald-200/70"
-									: "border-slate-200 bg-slate-200/85"
+					</div>
+
+					<button
+						type="button"
+						role="switch"
+						aria-checked={settings.enabled}
+						onClick={() => {
+							setSettings((currentSettings) => ({
+								...currentSettings,
+								enabled: !currentSettings.enabled,
+							}));
+						}}
+						className={`relative h-12 w-22 rounded-full border transition ${
+							settings.enabled
+								? "border-emerald-300/80 bg-emerald-200/80"
+								: "border-slate-300/80 bg-slate-200/85"
+						}`}
+					>
+						<span
+							className={`absolute top-1 flex h-10 w-10 items-center justify-center rounded-full bg-white text-sm shadow-[0_10px_18px_rgba(15,23,42,0.16)] transition ${
+								settings.enabled ? "left-[calc(100%-2.75rem)]" : "left-1"
 							}`}
 						>
-							<span
-								className={`absolute top-1.5 h-11 w-11 rounded-full bg-white shadow-[0_12px_20px_rgba(15,23,42,0.16)] transition ${
-									settings.enabled ? "left-[calc(100%-3.35rem)]" : "left-1.5"
-								}`}
-							/>
-						</button>
-					</div>
-				</section>
+							{settings.enabled ? "🔥" : "⏸️"}
+						</span>
+					</button>
+				</header>
 
-				<section className="rounded-[28px] border border-[rgba(15,23,42,0.08)] bg-white/80 p-5 shadow-[0_18px_34px_rgba(15,23,42,0.08)] backdrop-blur-md">
-					<p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-400">
-						Analysis mode
-					</p>
-					<div className="mt-4 grid grid-cols-2 gap-3">
+				<div className="mt-4 flex flex-wrap gap-2">
+					<StatusChip
+						emoji={settings.enabled ? "🟢" : "⚫"}
+						label={settings.enabled ? "Active" : "Paused"}
+						tone={
+							settings.enabled
+								? "bg-emerald-200/80 text-emerald-950"
+								: "bg-slate-900/8 text-slate-600"
+						}
+					/>
+					<StatusChip
+						emoji={currentEngineMeta.emoji}
+						label={currentEngineMeta.label}
+						tone={currentEngineMeta.tone}
+					/>
+					<StatusChip
+						emoji={currentSaveMeta.emoji}
+						label={currentSaveMeta.label}
+						tone={currentSaveMeta.tone}
+					/>
+				</div>
+
+				{errorMessage ? (
+					<div className="mt-3 rounded-2xl border border-rose-200/80 bg-rose-50/90 px-3 py-2 text-xs font-medium text-rose-900">
+						⚠️ {errorMessage}
+					</div>
+				) : null}
+
+				<section className="mt-4 rounded-3xl border border-[rgba(15,23,42,0.08)] bg-white/78 p-3 shadow-[0_14px_26px_rgba(15,23,42,0.06)]">
+					<div className="grid grid-cols-2 gap-2">
 						<ModeButton
 							label="Depth"
-							description="Stable quality per move, great for consistent board scans."
+							emoji="🎯"
 							isSelected={settings.analysisMode === "depth"}
 							onClick={() => {
 								setAnalysisMode("depth");
 							}}
 						/>
 						<ModeButton
-							label="Move time"
-							description="Bound each search by time when you want steady latency."
+							label="Time"
+							emoji="⏱️"
 							isSelected={settings.analysisMode === "moveTime"}
 							onClick={() => {
 								setAnalysisMode("moveTime");
@@ -410,98 +422,64 @@ export function App() {
 					</div>
 				</section>
 
-				{settings.analysisMode === "depth" ? (
-					<SliderCard
-						eyebrow="Search depth"
-						title="Calculation depth"
-						description="Higher depth usually means stronger suggestions, but more work for each fresh position."
-						valueLabel={`D${settings.depth}`}
-						min={SETTINGS_LIMITS.depth.min}
-						max={SETTINGS_LIMITS.depth.max}
-						step={SETTINGS_LIMITS.depth.step}
-						value={settings.depth}
+				<div className="mt-3 grid grid-cols-2 gap-3">
+					{settings.analysisMode === "depth" ? (
+						<SliderPanel
+							emoji="🎚️"
+							label="Depth"
+							valueLabel={`D${settings.depth}`}
+							min={SETTINGS_LIMITS.depth.min}
+							max={SETTINGS_LIMITS.depth.max}
+							step={SETTINGS_LIMITS.depth.step}
+							value={settings.depth}
+							onChange={(value) => {
+								setSettings((currentSettings) => ({
+									...currentSettings,
+									depth: value,
+								}));
+							}}
+						/>
+					) : (
+						<SliderPanel
+							emoji="⚡"
+							label="Move Time"
+							valueLabel={formatMoveTime(settings.moveTimeMs)}
+							min={SETTINGS_LIMITS.moveTimeMs.min}
+							max={SETTINGS_LIMITS.moveTimeMs.max}
+							step={SETTINGS_LIMITS.moveTimeMs.step}
+							value={settings.moveTimeMs}
+							onChange={(value) => {
+								setSettings((currentSettings) => ({
+									...currentSettings,
+									moveTimeMs: value,
+								}));
+							}}
+						/>
+					)}
+
+					<SliderPanel
+						emoji="🌈"
+						label="MultiPV"
+						valueLabel={`${settings.multiPv}`}
+						min={SETTINGS_LIMITS.multiPv.min}
+						max={SETTINGS_LIMITS.multiPv.max}
+						step={SETTINGS_LIMITS.multiPv.step}
+						value={settings.multiPv}
 						onChange={(value) => {
 							setSettings((currentSettings) => ({
 								...currentSettings,
-								depth: value,
+								multiPv: value,
 							}));
 						}}
-						footerLabel="Sharper lines"
 					/>
-				) : (
-					<SliderCard
-						eyebrow="Move budget"
-						title="Time per move"
-						description="Keep analysis responsive by capping the thinking time for each fresh position."
-						valueLabel={formatMoveTime(settings.moveTimeMs)}
-						min={SETTINGS_LIMITS.moveTimeMs.min}
-						max={SETTINGS_LIMITS.moveTimeMs.max}
-						step={SETTINGS_LIMITS.moveTimeMs.step}
-						value={settings.moveTimeMs}
-						onChange={(value) => {
-							setSettings((currentSettings) => ({
-								...currentSettings,
-								moveTimeMs: value,
-							}));
-						}}
-						footerLabel="Faster updates"
-					/>
-				)}
+				</div>
 
-				<SliderCard
-					eyebrow="Line count"
-					title="MultiPV"
-					description="Control how many candidate moves the extension should surface for each position."
-					valueLabel={`${settings.multiPv}`}
-					min={SETTINGS_LIMITS.multiPv.min}
-					max={SETTINGS_LIMITS.multiPv.max}
-					step={SETTINGS_LIMITS.multiPv.step}
-					value={settings.multiPv}
-					onChange={(value) => {
-						setSettings((currentSettings) => ({
-							...currentSettings,
-							multiPv: value,
-						}));
-					}}
-					footerLabel="Best lines"
-				/>
-
-				<section className="rounded-[28px] border border-[rgba(15,23,42,0.08)] bg-[linear-gradient(180deg,rgba(15,23,42,0.95),rgba(30,41,59,0.94))] p-5 text-white shadow-[0_18px_34px_rgba(15,23,42,0.14)]">
-					<div className="flex items-center justify-between gap-4">
-						<div>
-							<p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-400">
-								Runtime status
-							</p>
-							<h3 className="mt-3 text-xl font-semibold">Engine overview</h3>
-						</div>
-						<div
-							className={`rounded-full px-3 py-2 text-xs font-semibold uppercase tracking-[0.22em] ${currentEngineMeta.tone}`}
-						>
-							{currentEngineMeta.label}
-						</div>
-					</div>
-					<p className="mt-4 text-sm leading-6 text-slate-300">
-						{currentEngineMeta.description}
-					</p>
-					<div className="mt-5 grid gap-3 text-sm text-slate-200">
-						<div className="flex items-center justify-between rounded-[20px] bg-white/6 px-4 py-3">
-							<span className="text-slate-400">Profile</span>
-							<span className="font-medium text-white">
-								{getProfileSummary(settings)}
-							</span>
-						</div>
-						<div className="flex items-center justify-between rounded-[20px] bg-white/6 px-4 py-3">
-							<span className="text-slate-400">Storage</span>
-							<span className="font-medium text-white">Global auto-save</span>
-						</div>
-						<div className="flex items-center justify-between rounded-[20px] bg-white/6 px-4 py-3">
-							<span className="text-slate-400">Extension</span>
-							<span className="font-medium text-white">
-								{settings.enabled ? "Watching boards" : "Standing by"}
-							</span>
-						</div>
-					</div>
-				</section>
+				<footer className="mt-3 flex items-center justify-between rounded-[22px] bg-slate-950 px-4 py-3 text-sm text-white shadow-[0_14px_24px_rgba(15,23,42,0.16)]">
+					<span className="font-medium">🧠 {getProfileSummary(settings)}</span>
+					<span className="text-white/72">
+						{settings.enabled ? "Watching" : "Sleeping"}
+					</span>
+				</footer>
 			</div>
 		</div>
 	);
