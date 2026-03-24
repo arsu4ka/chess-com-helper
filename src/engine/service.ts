@@ -1,3 +1,7 @@
+import { waitFor } from "../utils";
+import { validateFen } from "../utils/fen";
+import { clamp, parseInteger, toInteger } from "../utils/math";
+import { createDeferred, type Deferred } from "../utils/promises";
 import type {
 	AnalysisMove,
 	AnalysisResult,
@@ -13,12 +17,6 @@ const DEFAULT_MULTI_PV = 3;
 const MAX_MULTI_PV = 5;
 const READY_TIMEOUT_MS = 10_000;
 const STOP_TIMEOUT_MS = 2_000;
-
-interface Deferred<T> {
-	promise: Promise<T>;
-	resolve: (value: T | PromiseLike<T>) => void;
-	reject: (reason?: unknown) => void;
-}
 
 interface ActiveAnalysis {
 	fen: string;
@@ -49,77 +47,8 @@ class EngineServiceError extends Error {
 	}
 }
 
-const createDeferred = <T>(): Deferred<T> => {
-	let resolve!: Deferred<T>["resolve"];
-	let reject!: Deferred<T>["reject"];
-
-	const promise = new Promise<T>((innerResolve, innerReject) => {
-		resolve = innerResolve;
-		reject = innerReject;
-	});
-
-	return { promise, resolve, reject };
-};
-
-const waitFor = (timeoutMs: number) =>
-	new Promise<void>((resolve) => {
-		setTimeout(resolve, timeoutMs);
-	});
-
-const ensureInteger = (value: number | undefined, fallback: number) => {
-	if (typeof value !== "number" || Number.isNaN(value)) return fallback;
-	return Math.trunc(value);
-};
-
-const clamp = (value: number, min: number, max: number) => {
-	return Math.min(Math.max(value, min), max);
-};
-
-const parseInteger = (value: string | undefined) => {
-	if (!value) return null;
-
-	const parsed = Number.parseInt(value, 10);
-	return Number.isNaN(parsed) ? null : parsed;
-};
-
 const createAbortError = () =>
 	new EngineServiceError("ANALYSIS_ABORTED", "The analysis was aborted.");
-
-const validateFen = (fen: string) => {
-	const parts = fen.trim().split(/\s+/);
-
-	if (parts.length !== 6) return false;
-
-	const [board, activeColor, castling, enPassant, halfmove, fullmove] = parts;
-	const ranks = board.split("/");
-
-	if (ranks.length !== 8) return false;
-
-	for (const rank of ranks) {
-		let squares = 0;
-
-		for (const symbol of rank) {
-			if (/^[1-8]$/.test(symbol)) {
-				squares += Number.parseInt(symbol, 10);
-				continue;
-			}
-
-			if (!/^[prnbqkPRNBQK]$/.test(symbol)) return false;
-
-			squares += 1;
-		}
-
-		if (squares !== 8) return false;
-	}
-
-	if (!/^[wb]$/.test(activeColor)) return false;
-	if (!/^(-|[KQkq]+)$/.test(castling)) return false;
-	if (!/^(-|[a-h][36])$/.test(enPassant)) return false;
-	if (!/^\d+$/.test(halfmove)) return false;
-	if (!/^[1-9]\d*$/.test(fullmove)) return false;
-
-	return true;
-};
 
 const parseInfoLine = (line: string): AnalysisMove | null => {
 	if (!line.startsWith("info ")) return null;
@@ -504,13 +433,13 @@ export class StockfishEngineService {
 
 		return {
 			fen,
-			depth: clamp(ensureInteger(input.depth, DEFAULT_ANALYSIS_DEPTH), 1, 50),
+			depth: clamp(toInteger(input.depth, DEFAULT_ANALYSIS_DEPTH), 1, 50),
 			moveTimeMs:
 				typeof input.moveTimeMs === "number" && input.moveTimeMs > 0
 					? Math.trunc(input.moveTimeMs)
 					: undefined,
 			multiPv: clamp(
-				ensureInteger(input.multiPv, DEFAULT_MULTI_PV),
+				toInteger(input.multiPv, DEFAULT_MULTI_PV),
 				1,
 				MAX_MULTI_PV,
 			),
