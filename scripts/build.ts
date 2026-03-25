@@ -41,6 +41,7 @@ await Bun.build({
 		"popup/index.tsx",
 	]),
 	outdir,
+	minify: true,
 });
 
 const glob = new Glob("**");
