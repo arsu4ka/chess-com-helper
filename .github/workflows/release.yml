@@ -1,0 +1,49 @@
+name: Release Build
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build extension archive
+        run: bun run pack
+
+      - name: Read manifest version
+        id: manifest
+        run: echo "version=$(jq -r '.version' public/manifest.json)" >> "$GITHUB_OUTPUT"
+
+      - name: Resolve archive path
+        id: archive
+        run: echo "path=$(find release -maxdepth 1 -name '*.zip' -print -quit)" >> "$GITHUB_OUTPUT"
+
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: main-build-${{ github.run_number }}
+          name: Chess.com Helper main build #${{ github.run_number }}
+          generate_release_notes: true
+          files: ${{ steps.archive.outputs.path }}
+          body: |
+            Automated archive for the latest `main` build.
+
+            Manifest version: `${{ steps.manifest.outputs.version }}`
+            Commit: `${{ github.sha }}`

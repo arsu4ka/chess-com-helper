@@ -1,10 +1,11 @@
 import AdmZip from "adm-zip";
-import Bun, { $ } from "bun";
+import { $ } from "bun";
 import manifest from "../public/manifest.json";
 
 import "./cwd";
 
-await $`bun run ./config/build.ts`;
+await $`mkdir -p ./release`;
+await $`bun run ./scripts/build.ts`;
 
 const packName = manifest.name.toLowerCase().replace(/[\s\W]+/g, "-");
 
